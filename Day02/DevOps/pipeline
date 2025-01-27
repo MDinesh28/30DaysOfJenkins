@@ -1,0 +1,34 @@
+pipeline {
+    agent any
+    environment {
+        WAR_FILE = "target/NETFLIX-1.2.2.war"
+        TOMCAT_USER = "tomcat" // Replace with your Tomcat username
+        TOMCAT_PASSWORD = "dinesh" // Replace with your Tomcat password
+        TOMCAT_HOST = "52.66.246.164" // Replace with your Tomcat server's public IP
+        TOMCAT_PORT = "8080" // Default Tomcat port
+    }
+    stages {
+        stage('Checkout') {
+            steps {
+                git url: 'https://github.com/MDinesh28/jenkins-java-project.git', branch: 'master'
+            }
+        }
+        stage('Build') {
+            steps {
+                sh 'mvn clean package'
+            }
+        }
+        stage('Deploy') {
+            steps {
+                script {
+                    // Deploy WAR file to Tomcat server
+                    sh """
+                    curl -u ${TOMCAT_USER}:${TOMCAT_PASSWORD} \\
+                    --upload-file ${WAR_FILE} \\
+                    http://${TOMCAT_HOST}:${TOMCAT_PORT}/manager/text/deploy?path=/your-app&update=true
+                    """
+                }
+            }
+        }
+    }
+}
