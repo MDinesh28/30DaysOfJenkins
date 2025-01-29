@@ -1,0 +1,64 @@
+pipeline {
+    agent any
+
+    environment {
+        AWS_REGION = 'ap-south-1' // Replace with your AWS region
+        ECR_REPOSITORY = '626635428245.dkr.ecr.ap-south-1.amazonaws.com/dockerimage' // Replace with your ECR repository URI
+    }
+
+    stages {
+        stage('Checkout Code') {
+            steps {
+                git branch: 'main', url: 'https://github.com/MDinesh28/Dockerimages.git' // Replace with your Git repo URL
+            }
+        }
+
+        stage('Authenticate with ECR') {
+            steps {
+                withCredentials([[
+                    $class: 'AmazonWebServicesCredentialsBinding',
+                    credentialsId: 'aws-creds', // Replace with your Jenkins credential ID for AWS
+                    accessKeyVariable: 'AWS_ACCESS_KEY_ID',
+                    secretKeyVariable: 'AWS_SECRET_ACCESS_KEY'
+                ]]) {
+                    sh '''
+                        aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REPOSITORY}
+                    '''
+                }
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    sh 'docker build -t dockerimage .'
+                }
+            }
+        }
+
+        stage('Tag Docker Image') {
+            steps {
+                script {
+                    sh 'docker tag dockerimage:latest ${ECR_REPOSITORY}:latest'
+                }
+            }
+        }
+
+        stage('Push Docker Image') {
+            steps {
+                script {
+                    sh 'docker push ${ECR_REPOSITORY}:latest'
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo 'Docker image successfully built and pushed to ECR!'
+        }
+        failure {
+            echo 'Pipeline failed. Check logs for details.'
+        }
+    }
+}
